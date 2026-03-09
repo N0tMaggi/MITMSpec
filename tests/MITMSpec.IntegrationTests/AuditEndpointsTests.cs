@@ -1,0 +1,97 @@
+using System.Net;
+using System.Net.Http.Json;
+using MITMSpec.Contracts.Audit;
+using MITMSpec.Contracts.Auth;
+using MITMSpec.Contracts.Peers;
+using MITMSpec.Contracts.Tokens;
+using MITMSpec.Contracts.Users;
+
+namespace MITMSpec.IntegrationTests;
+
+public class AuditEndpointsTests : IClassFixture<TestWebApplicationFactory>
+{
+    private readonly TestWebApplicationFactory _factory;
+
+    public AuditEndpointsTests(TestWebApplicationFactory factory)
+    {
+        _factory = factory;
+    }
+
+    [Fact]
+    public async Task LifecycleActionsAreRecordedInAuditLog()
+    {
+        using var client = _factory.CreateClient();
+        var suffix = Guid.NewGuid().ToString("n")[..8];
+        var userId = $"user-{suffix}";
+        var redeemedTokenId = $"token-redeem-{suffix}";
+        var revokedTokenId = $"token-revoke-{suffix}";
+        var peerId = $"peer-{suffix}";
+
+        var createUserResponse = await client.PostAsJsonAsync(
+            "/api/users",
+            new CreateUserRequestDto("admin-001", userId, $"User {suffix}"));
+
+        var deactivateUserResponse = await client.PostAsJsonAsync(
+            $"/api/users/{userId}/deactivate",
+            new DeactivateUserRequestDto("admin-001", "operator request"));
+
+        var loginSuccessResponse = await client.PostAsJsonAsync(
+            "/api/auth/login-attempts",
+            new LoginAttemptRequestDto("system-auth", "operator@example.test", true, null));
+
+        var loginFailureResponse = await client.PostAsJsonAsync(
+            "/api/auth/login-attempts",
+            new LoginAttemptRequestDto("system-auth", "operator@example.test", false, "invalid password"));
+
+        var createRedeemTokenResponse = await client.PostAsJsonAsync(
+            "/api/tokens",
+            new CreateTokenRequestDto("admin-001", userId, redeemedTokenId, "Redeem token"));
+
+        var redeemTokenResponse = await client.PostAsJsonAsync(
+            $"/api/tokens/{redeemedTokenId}/redeem",
+            new TokenActionRequestDto("gateway-001"));
+
+        var createRevokeTokenResponse = await client.PostAsJsonAsync(
+            "/api/tokens",
+            new CreateTokenRequestDto("admin-001", userId, revokedTokenId, "Revoke token"));
+
+        var revokeTokenResponse = await client.PostAsJsonAsync(
+            $"/api/tokens/{revokedTokenId}/revoke",
+            new TokenActionRequestDto("admin-001"));
+
+        var bindPeerResponse = await client.PostAsJsonAsync(
+            "/api/peers",
+            new BindPeerRequestDto("admin-001", peerId, userId));
+
+        var removePeerResponse = await client.PostAsJsonAsync(
+            $"/api/peers/{peerId}/remove",
+            new RemovePeerRequestDto("admin-001", "peer rotated"));
+
+        var auditResponse = await client.GetAsync("/api/audit/entries?take=20");
+        var auditEntries = await auditResponse.Content.ReadFromJsonAsync<List<AuditEntryDto>>();
+
+        Assert.Equal(HttpStatusCode.Created, createUserResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, deactivateUserResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, loginSuccessResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, loginFailureResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, createRedeemTokenResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, redeemTokenResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, createRevokeTokenResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, revokeTokenResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, bindPeerResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, removePeerResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, auditResponse.StatusCode);
+
+        Assert.NotNull(auditEntries);
+        Assert.Contains(auditEntries, entry => entry.ActionType == "login.succeeded");
+        Assert.Contains(auditEntries, entry => entry.ActionType == "login.failed");
+        Assert.Contains(auditEntries, entry => entry.ActionType == "user.created");
+        Assert.Contains(auditEntries, entry => entry.ActionType == "user.deactivated");
+        Assert.Contains(auditEntries, entry => entry.ActionType == "token.created" && entry.SubjectId == redeemedTokenId);
+        Assert.Contains(auditEntries, entry => entry.ActionType == "token.redeemed" && entry.SubjectId == redeemedTokenId);
+        Assert.Contains(auditEntries, entry => entry.ActionType == "token.created" && entry.SubjectId == revokedTokenId);
+        Assert.Contains(auditEntries, entry => entry.ActionType == "token.revoked" && entry.SubjectId == revokedTokenId);
+        Assert.Contains(auditEntries, entry => entry.ActionType == "peer.bound" && entry.SubjectId == peerId);
+        Assert.Contains(auditEntries, entry => entry.ActionType == "peer.removed" && entry.SubjectId == peerId);
+    }
+}
