@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import uuid
 from datetime import datetime, timezone
 
 
 LOGGER = logging.getLogger("mitmspec.proxy")
+LOG_ENVELOPES = os.getenv("MITMSPEC_PROXY_LOG_ENVELOPES", "false").lower() == "true"
 
 
 class MITMSpecAddon:
@@ -37,7 +39,11 @@ class MITMSpecAddon:
             "traceId": flow.id,
         }
 
-        LOGGER.info("normalized envelope: %s", json.dumps(envelope))
+        if LOG_ENVELOPES:
+            LOGGER.warning(
+                "Per-request envelope logging is enabled. This should only be used for short-lived debugging. envelope=%s",
+                json.dumps(envelope),
+            )
 
 
 addons = [MITMSpecAddon()]
