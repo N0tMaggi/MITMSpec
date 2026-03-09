@@ -6,6 +6,8 @@ public sealed class PeerEntity
 
     public string UserId { get; set; } = string.Empty;
 
+    public string? EnrollmentTokenId { get; set; }
+
     public bool IsBound { get; set; }
 
     public DateTimeOffset BoundAtUtc { get; set; }

@@ -1,15 +1,32 @@
+using System.Security.Cryptography;
+using System.Text;
 using MITMSpec.Application.Abstractions;
 using MITMSpec.Contracts.Audit;
+using MITMSpec.Contracts.Peers;
 using MITMSpec.Contracts.Tokens;
 
 namespace MITMSpec.Application.Services;
 
-public sealed class TokenLifecycleService(ITokenStore tokenStore, IAuditEntryStore auditEntryStore) : ITokenLifecycleService
+public sealed class TokenLifecycleService(
+    ITokenStore tokenStore,
+    IPeerStore peerStore,
+    IAuditEntryStore auditEntryStore) : ITokenLifecycleService
 {
-    public async Task<TokenDto> CreateAsync(CreateTokenRequestDto request, CancellationToken cancellationToken = default)
+    public async Task<IssuedTokenDto> CreateAsync(CreateTokenRequestDto request, CancellationToken cancellationToken = default)
     {
-        var token = new TokenDto(request.TokenId, request.UserId, "created", request.Description, DateTimeOffset.UtcNow, null, null);
-        var saved = await tokenStore.UpsertAsync(token, cancellationToken);
+        var now = DateTimeOffset.UtcNow;
+        var token = new TokenDto(
+            CreateTokenId(),
+            request.UserId,
+            TokenStatus.Pending,
+            request.Description,
+            now,
+            now.AddHours(Math.Clamp(request.LifetimeHours, 1, 168)),
+            null,
+            null,
+            null);
+        var redeemSecret = CreateRedeemSecret();
+        var saved = await tokenStore.CreateAsync(token, ComputeSecretHash(redeemSecret), cancellationToken);
 
         await auditEntryStore.AddAsync(
             new AuditEntryDto(
@@ -23,10 +40,10 @@ public sealed class TokenLifecycleService(ITokenStore tokenStore, IAuditEntrySto
                 $"Token was created for user '{saved.UserId}'."),
             cancellationToken);
 
-        return saved;
+        return new IssuedTokenDto(saved, redeemSecret);
     }
 
-    public async Task<TokenDto?> RedeemAsync(string tokenId, TokenActionRequestDto request, CancellationToken cancellationToken = default)
+    public async Task<TokenRedeemResultDto?> RedeemAsync(string tokenId, RedeemTokenRequestDto request, CancellationToken cancellationToken = default)
     {
         var current = await tokenStore.GetByIdAsync(tokenId, cancellationToken);
         if (current is null)
@@ -34,7 +51,47 @@ public sealed class TokenLifecycleService(ITokenStore tokenStore, IAuditEntrySto
             return null;
         }
 
-        var updated = await tokenStore.UpsertAsync(current with { Status = "redeemed", RedeemedAtUtc = DateTimeOffset.UtcNow }, cancellationToken);
+        var evaluation = EvaluateRedeemability(current);
+        if (evaluation is not null)
+        {
+            await auditEntryStore.AddAsync(
+                new AuditEntryDto(
+                    Guid.NewGuid().ToString("n"),
+                    DateTimeOffset.UtcNow,
+                    "token.redeem_failed",
+                    "token",
+                    current.TokenId,
+                    request.ActorId,
+                    "failure",
+                    evaluation),
+                cancellationToken);
+
+            return null;
+        }
+
+        var storedSecretHash = await tokenStore.GetSecretHashAsync(tokenId, cancellationToken);
+        if (storedSecretHash is null || !CryptographicOperations.FixedTimeEquals(
+                Encoding.UTF8.GetBytes(storedSecretHash),
+                Encoding.UTF8.GetBytes(ComputeSecretHash(request.RedeemSecret))))
+        {
+            await auditEntryStore.AddAsync(
+                new AuditEntryDto(
+                    Guid.NewGuid().ToString("n"),
+                    DateTimeOffset.UtcNow,
+                    "token.redeem_failed",
+                    "token",
+                    current.TokenId,
+                    request.ActorId,
+                    "failure",
+                    $"Token redemption failed for peer '{request.PeerId}' due to an invalid secret."),
+                cancellationToken);
+
+            return null;
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var updated = await tokenStore.UpsertAsync(current with { Status = TokenStatus.Redeemed, RedeemedAtUtc = now }, cancellationToken);
+        var peer = await peerStore.UpsertAsync(new PeerDto(request.PeerId, updated.UserId, updated.TokenId, true, now, null), cancellationToken);
 
         await auditEntryStore.AddAsync(
             new AuditEntryDto(
@@ -48,7 +105,19 @@ public sealed class TokenLifecycleService(ITokenStore tokenStore, IAuditEntrySto
                 $"Token was redeemed for user '{updated.UserId}'."),
             cancellationToken);
 
-        return updated;
+        await auditEntryStore.AddAsync(
+            new AuditEntryDto(
+                Guid.NewGuid().ToString("n"),
+                DateTimeOffset.UtcNow,
+                "peer.bound",
+                "peer",
+                peer.PeerId,
+                request.ActorId,
+                "success",
+                $"Peer '{peer.PeerId}' was bound to user '{peer.UserId}' via token '{updated.TokenId}'."),
+            cancellationToken);
+
+        return new TokenRedeemResultDto(updated, peer);
     }
 
     public async Task<TokenDto?> RevokeAsync(string tokenId, TokenActionRequestDto request, CancellationToken cancellationToken = default)
@@ -59,7 +128,14 @@ public sealed class TokenLifecycleService(ITokenStore tokenStore, IAuditEntrySto
             return null;
         }
 
-        var updated = await tokenStore.UpsertAsync(current with { Status = "revoked", RevokedAtUtc = DateTimeOffset.UtcNow }, cancellationToken);
+        var updated = await tokenStore.UpsertAsync(
+            current with
+            {
+                Status = TokenStatus.Revoked,
+                RevokedAtUtc = DateTimeOffset.UtcNow,
+                RevocationReason = request.Reason
+            },
+            cancellationToken);
 
         await auditEntryStore.AddAsync(
             new AuditEntryDto(
@@ -70,9 +146,45 @@ public sealed class TokenLifecycleService(ITokenStore tokenStore, IAuditEntrySto
                 updated.TokenId,
                 request.ActorId,
                 "success",
-                $"Token was revoked for user '{updated.UserId}'."),
+                $"Token was revoked for user '{updated.UserId}'. Reason: {request.Reason ?? "unspecified"}."),
             cancellationToken);
 
         return updated;
+    }
+
+    private static string CreateTokenId()
+        => $"tok_{Guid.NewGuid():N}";
+
+    private static string CreateRedeemSecret()
+    {
+        Span<byte> bytes = stackalloc byte[32];
+        RandomNumberGenerator.Fill(bytes);
+        return Convert.ToHexString(bytes);
+    }
+
+    private static string ComputeSecretHash(string redeemSecret)
+    {
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(redeemSecret));
+        return Convert.ToHexString(hash);
+    }
+
+    private static string? EvaluateRedeemability(TokenDto token)
+    {
+        if (token.Status == TokenStatus.Revoked)
+        {
+            return "Token redemption failed because the token is revoked.";
+        }
+
+        if (token.Status == TokenStatus.Redeemed)
+        {
+            return "Token redemption failed because the token is already redeemed.";
+        }
+
+        if (token.ExpiresAtUtc <= DateTimeOffset.UtcNow)
+        {
+            return "Token redemption failed because the token is expired.";
+        }
+
+        return null;
     }
 }

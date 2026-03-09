@@ -4,7 +4,9 @@ using MITMSpec.Domain.Traffic;
 
 namespace MITMSpec.Application.Services;
 
-public sealed class TrafficIngestService(ITrafficEventStore trafficEventStore) : ITrafficIngestService
+public sealed class TrafficIngestService(
+    ITrafficEventStore trafficEventStore,
+    IPeerStore peerStore) : ITrafficIngestService
 {
     public async Task<TrafficIngestResponseDto> IngestAsync(TrafficEnvelopeV1 envelope, CancellationToken cancellationToken = default)
     {
@@ -19,9 +21,16 @@ public sealed class TrafficIngestService(ITrafficEventStore trafficEventStore) :
             return new TrafficIngestResponseDto(envelope.EventId, TrafficIngestOutcome.Quarantined, "Envelope validation failed.");
         }
 
-        if (string.IsNullOrWhiteSpace(envelope.UserId))
+        var peer = await peerStore.GetByIdAsync(envelope.PeerId, cancellationToken);
+        if (peer is null || !peer.IsBound || peer.RemovedAtUtc is not null)
         {
-            return new TrafficIngestResponseDto(envelope.EventId, TrafficIngestOutcome.Quarantined, "Envelope could not be attributed to a user.");
+            return new TrafficIngestResponseDto(envelope.EventId, TrafficIngestOutcome.Quarantined, "Envelope could not be attributed to a bound peer.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(envelope.UserId) &&
+            !string.Equals(envelope.UserId, peer.UserId, StringComparison.Ordinal))
+        {
+            return new TrafficIngestResponseDto(envelope.EventId, TrafficIngestOutcome.Quarantined, "Envelope user attribution did not match the bound peer.");
         }
 
         var trafficEvent = new TrafficEvent(
@@ -29,7 +38,7 @@ public sealed class TrafficIngestService(ITrafficEventStore trafficEventStore) :
             envelope.ObservedAtUtc,
             envelope.GatewayId,
             envelope.PeerId,
-            envelope.UserId,
+            peer.UserId,
             envelope.Scheme,
             envelope.Method.ToUpperInvariant(),
             envelope.Host,

@@ -1,4 +1,5 @@
 namespace MITMSpec.Contracts.Tokens;
 
 public sealed record TokenActionRequestDto(
-    string ActorId);
+    string ActorId,
+    string? Reason);

@@ -17,6 +17,7 @@ public sealed class PeerEntityConfiguration : IEntityTypeConfiguration<PeerEntit
         builder.HasKey(item => item.PeerId);
         builder.Property(item => item.PeerId).HasMaxLength(128);
         builder.Property(item => item.UserId).HasMaxLength(128).IsRequired();
+        builder.Property(item => item.EnrollmentTokenId).HasMaxLength(128);
         builder.Property(item => item.BoundAtUtc).HasConversion(converter);
         builder.Property(item => item.RemovedAtUtc).HasConversion(converter);
         builder.HasIndex(item => item.UserId);

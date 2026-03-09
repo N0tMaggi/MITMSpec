@@ -27,6 +27,7 @@ public sealed class PeerStore(IDbContextFactory<MITMSpecDbContext> dbContextFact
         }
 
         entity.UserId = peer.UserId;
+        entity.EnrollmentTokenId = peer.EnrollmentTokenId;
         entity.IsBound = peer.IsBound;
         entity.BoundAtUtc = peer.BoundAtUtc;
         entity.RemovedAtUtc = peer.RemovedAtUtc;
@@ -36,5 +37,5 @@ public sealed class PeerStore(IDbContextFactory<MITMSpecDbContext> dbContextFact
     }
 
     private static PeerDto Map(PeerEntity entity) =>
-        new(entity.PeerId, entity.UserId, entity.IsBound, entity.BoundAtUtc, entity.RemovedAtUtc);
+        new(entity.PeerId, entity.UserId, entity.EnrollmentTokenId, entity.IsBound, entity.BoundAtUtc, entity.RemovedAtUtc);
 }

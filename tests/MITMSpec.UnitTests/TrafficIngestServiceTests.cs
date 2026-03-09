@@ -1,5 +1,6 @@
 using MITMSpec.Application.Abstractions;
 using MITMSpec.Application.Services;
+using MITMSpec.Contracts.Peers;
 using MITMSpec.Contracts.Traffic;
 using MITMSpec.Domain.Traffic;
 
@@ -8,10 +9,10 @@ namespace MITMSpec.UnitTests;
 public class TrafficIngestServiceTests
 {
     [Fact]
-    public async Task IngestAsyncQuarantinesEnvelopeWhenUserCannotBeResolved()
+    public async Task IngestAsyncQuarantinesEnvelopeWhenPeerCannotBeResolved()
     {
-        var service = new TrafficIngestService(new FakeTrafficEventStore());
-        var envelope = CreateEnvelope() with { UserId = null };
+        var service = new TrafficIngestService(new FakeTrafficEventStore(), new FakePeerStore(null));
+        var envelope = CreateEnvelope();
 
         var result = await service.IngestAsync(envelope);
 
@@ -19,13 +20,25 @@ public class TrafficIngestServiceTests
     }
 
     [Fact]
-    public async Task IngestAsyncAcceptsEnvelopeWhenEnvelopeIsValid()
+    public async Task IngestAsyncAcceptsEnvelopeWhenEnvelopeMatchesBoundPeer()
     {
-        var service = new TrafficIngestService(new FakeTrafficEventStore());
+        var peer = new PeerDto("peer-test", "user-test", "tok-test", true, DateTimeOffset.UtcNow, null);
+        var service = new TrafficIngestService(new FakeTrafficEventStore(), new FakePeerStore(peer));
 
         var result = await service.IngestAsync(CreateEnvelope());
 
         Assert.Equal(TrafficIngestOutcome.Accepted, result.Outcome);
+    }
+
+    [Fact]
+    public async Task IngestAsyncQuarantinesEnvelopeWhenEnvelopeUserDoesNotMatchBoundPeer()
+    {
+        var peer = new PeerDto("peer-test", "user-other", "tok-test", true, DateTimeOffset.UtcNow, null);
+        var service = new TrafficIngestService(new FakeTrafficEventStore(), new FakePeerStore(peer));
+
+        var result = await service.IngestAsync(CreateEnvelope());
+
+        Assert.Equal(TrafficIngestOutcome.Quarantined, result.Outcome);
     }
 
     private static TrafficEnvelopeV1 CreateEnvelope() =>
@@ -61,5 +74,14 @@ public class TrafficIngestServiceTests
 
         public ValueTask<IReadOnlyList<TrafficEvent>> GetRecentAsync(int take, CancellationToken cancellationToken = default)
             => ValueTask.FromResult<IReadOnlyList<TrafficEvent>>([]);
+    }
+
+    private sealed class FakePeerStore(PeerDto? peer) : IPeerStore
+    {
+        public Task<PeerDto?> GetByIdAsync(string peerId, CancellationToken cancellationToken = default)
+            => Task.FromResult(peer?.PeerId == peerId ? peer : null);
+
+        public Task<PeerDto> UpsertAsync(PeerDto model, CancellationToken cancellationToken = default)
+            => Task.FromResult(model);
     }
 }

@@ -15,6 +15,16 @@ public sealed class TokenStore(IDbContextFactory<MITMSpecDbContext> dbContextFac
         return entity is null ? null : Map(entity);
     }
 
+    public async Task<string?> GetSecretHashAsync(string tokenId, CancellationToken cancellationToken = default)
+    {
+        await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        return await dbContext.Tokens
+            .AsNoTracking()
+            .Where(item => item.TokenId == tokenId)
+            .Select(item => item.SecretHash)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<TokenDto> UpsertAsync(TokenDto token, CancellationToken cancellationToken = default)
     {
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -30,13 +40,37 @@ public sealed class TokenStore(IDbContextFactory<MITMSpecDbContext> dbContextFac
         entity.Status = token.Status;
         entity.Description = token.Description;
         entity.CreatedAtUtc = token.CreatedAtUtc;
+        entity.ExpiresAtUtc = token.ExpiresAtUtc;
         entity.RedeemedAtUtc = token.RedeemedAtUtc;
         entity.RevokedAtUtc = token.RevokedAtUtc;
+        entity.RevocationReason = token.RevocationReason;
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return Map(entity);
     }
 
+    public async Task<TokenDto> CreateAsync(TokenDto token, string secretHash, CancellationToken cancellationToken = default)
+    {
+        await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var entity = new TokenEntity
+        {
+            TokenId = token.TokenId,
+            UserId = token.UserId,
+            Status = token.Status,
+            Description = token.Description,
+            SecretHash = secretHash,
+            CreatedAtUtc = token.CreatedAtUtc,
+            ExpiresAtUtc = token.ExpiresAtUtc,
+            RedeemedAtUtc = token.RedeemedAtUtc,
+            RevokedAtUtc = token.RevokedAtUtc,
+            RevocationReason = token.RevocationReason
+        };
+
+        dbContext.Tokens.Add(entity);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return Map(entity);
+    }
+
     private static TokenDto Map(TokenEntity entity) =>
-        new(entity.TokenId, entity.UserId, entity.Status, entity.Description, entity.CreatedAtUtc, entity.RedeemedAtUtc, entity.RevokedAtUtc);
+        new(entity.TokenId, entity.UserId, entity.Status, entity.Description, entity.CreatedAtUtc, entity.ExpiresAtUtc, entity.RedeemedAtUtc, entity.RevokedAtUtc, entity.RevocationReason);
 }

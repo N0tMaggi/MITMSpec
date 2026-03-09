@@ -23,8 +23,6 @@ public class AuditEndpointsTests : IClassFixture<TestWebApplicationFactory>
         using var client = _factory.CreateClient();
         var suffix = Guid.NewGuid().ToString("n")[..8];
         var userId = $"user-{suffix}";
-        var redeemedTokenId = $"token-redeem-{suffix}";
-        var revokedTokenId = $"token-revoke-{suffix}";
         var peerId = $"peer-{suffix}";
 
         var createUserResponse = await client.PostAsJsonAsync(
@@ -45,23 +43,21 @@ public class AuditEndpointsTests : IClassFixture<TestWebApplicationFactory>
 
         var createRedeemTokenResponse = await client.PostAsJsonAsync(
             "/api/tokens",
-            new CreateTokenRequestDto("admin-001", userId, redeemedTokenId, "Redeem token"));
+            new CreateTokenRequestDto("admin-001", userId, "Redeem token", 24));
+        var redeemToken = await createRedeemTokenResponse.Content.ReadFromJsonAsync<IssuedTokenDto>();
 
         var redeemTokenResponse = await client.PostAsJsonAsync(
-            $"/api/tokens/{redeemedTokenId}/redeem",
-            new TokenActionRequestDto("gateway-001"));
+            $"/api/tokens/{redeemToken!.Token.TokenId}/redeem",
+            new RedeemTokenRequestDto("gateway-001", peerId, redeemToken.RedeemSecret));
 
         var createRevokeTokenResponse = await client.PostAsJsonAsync(
             "/api/tokens",
-            new CreateTokenRequestDto("admin-001", userId, revokedTokenId, "Revoke token"));
+            new CreateTokenRequestDto("admin-001", userId, "Revoke token", 24));
+        var revokeToken = await createRevokeTokenResponse.Content.ReadFromJsonAsync<IssuedTokenDto>();
 
         var revokeTokenResponse = await client.PostAsJsonAsync(
-            $"/api/tokens/{revokedTokenId}/revoke",
-            new TokenActionRequestDto("admin-001"));
-
-        var bindPeerResponse = await client.PostAsJsonAsync(
-            "/api/peers",
-            new BindPeerRequestDto("admin-001", peerId, userId));
+            $"/api/tokens/{revokeToken!.Token.TokenId}/revoke",
+            new TokenActionRequestDto("admin-001", "operator revoked token"));
 
         var removePeerResponse = await client.PostAsJsonAsync(
             $"/api/peers/{peerId}/remove",
@@ -75,10 +71,11 @@ public class AuditEndpointsTests : IClassFixture<TestWebApplicationFactory>
         Assert.Equal(HttpStatusCode.NoContent, loginSuccessResponse.StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, loginFailureResponse.StatusCode);
         Assert.Equal(HttpStatusCode.Created, createRedeemTokenResponse.StatusCode);
+        Assert.NotNull(redeemToken);
         Assert.Equal(HttpStatusCode.OK, redeemTokenResponse.StatusCode);
         Assert.Equal(HttpStatusCode.Created, createRevokeTokenResponse.StatusCode);
+        Assert.NotNull(revokeToken);
         Assert.Equal(HttpStatusCode.OK, revokeTokenResponse.StatusCode);
-        Assert.Equal(HttpStatusCode.Created, bindPeerResponse.StatusCode);
         Assert.Equal(HttpStatusCode.OK, removePeerResponse.StatusCode);
         Assert.Equal(HttpStatusCode.OK, auditResponse.StatusCode);
 
@@ -87,10 +84,10 @@ public class AuditEndpointsTests : IClassFixture<TestWebApplicationFactory>
         Assert.Contains(auditEntries, entry => entry.ActionType == "login.failed");
         Assert.Contains(auditEntries, entry => entry.ActionType == "user.created");
         Assert.Contains(auditEntries, entry => entry.ActionType == "user.deactivated");
-        Assert.Contains(auditEntries, entry => entry.ActionType == "token.created" && entry.SubjectId == redeemedTokenId);
-        Assert.Contains(auditEntries, entry => entry.ActionType == "token.redeemed" && entry.SubjectId == redeemedTokenId);
-        Assert.Contains(auditEntries, entry => entry.ActionType == "token.created" && entry.SubjectId == revokedTokenId);
-        Assert.Contains(auditEntries, entry => entry.ActionType == "token.revoked" && entry.SubjectId == revokedTokenId);
+        Assert.Contains(auditEntries, entry => entry.ActionType == "token.created" && entry.SubjectId == redeemToken.Token.TokenId);
+        Assert.Contains(auditEntries, entry => entry.ActionType == "token.redeemed" && entry.SubjectId == redeemToken.Token.TokenId);
+        Assert.Contains(auditEntries, entry => entry.ActionType == "token.created" && entry.SubjectId == revokeToken.Token.TokenId);
+        Assert.Contains(auditEntries, entry => entry.ActionType == "token.revoked" && entry.SubjectId == revokeToken.Token.TokenId);
         Assert.Contains(auditEntries, entry => entry.ActionType == "peer.bound" && entry.SubjectId == peerId);
         Assert.Contains(auditEntries, entry => entry.ActionType == "peer.removed" && entry.SubjectId == peerId);
     }

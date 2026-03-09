@@ -8,7 +8,7 @@ public sealed class PeerLifecycleService(IPeerStore peerStore, IAuditEntryStore 
 {
     public async Task<PeerDto> BindPeerAsync(BindPeerRequestDto request, CancellationToken cancellationToken = default)
     {
-        var peer = new PeerDto(request.PeerId, request.UserId, true, DateTimeOffset.UtcNow, null);
+        var peer = new PeerDto(request.PeerId, request.UserId, null, true, DateTimeOffset.UtcNow, null);
         var saved = await peerStore.UpsertAsync(peer, cancellationToken);
 
         await auditEntryStore.AddAsync(

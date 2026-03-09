@@ -91,22 +91,22 @@ public static class ApiEndpoints
         var tokens = endpoints.MapGroup("/api/tokens").RequireRateLimiting("api").WithTags("Tokens");
         tokens.MapPost("/", async Task<IResult> (CreateTokenRequestDto request, [FromServices] ITokenLifecycleService service, CancellationToken cancellationToken) =>
         {
-            if (string.IsNullOrWhiteSpace(request.ActorId) || string.IsNullOrWhiteSpace(request.UserId) || string.IsNullOrWhiteSpace(request.TokenId))
+            if (string.IsNullOrWhiteSpace(request.ActorId) || string.IsNullOrWhiteSpace(request.UserId) || string.IsNullOrWhiteSpace(request.Description))
             {
-                return TypedResults.BadRequest(CreateValidationProblem("actorId, userId, and tokenId are required."));
+                return TypedResults.BadRequest(CreateValidationProblem("actorId, userId, and description are required."));
             }
 
             var token = await service.CreateAsync(request, cancellationToken);
-            return TypedResults.Created($"/api/tokens/{token.TokenId}", token);
+            return TypedResults.Created($"/api/tokens/{token.Token.TokenId}", token);
         })
         .WithName("CreateToken")
         .WithSummary("Creates a provisioning token and records the action in the audit log.");
 
-        tokens.MapPost("/{tokenId}/redeem", async Task<IResult> (string tokenId, TokenActionRequestDto request, [FromServices] ITokenLifecycleService service, CancellationToken cancellationToken) =>
+        tokens.MapPost("/{tokenId}/redeem", async Task<IResult> (string tokenId, RedeemTokenRequestDto request, [FromServices] ITokenLifecycleService service, CancellationToken cancellationToken) =>
         {
-            if (string.IsNullOrWhiteSpace(tokenId) || string.IsNullOrWhiteSpace(request.ActorId))
+            if (string.IsNullOrWhiteSpace(tokenId) || string.IsNullOrWhiteSpace(request.ActorId) || string.IsNullOrWhiteSpace(request.PeerId) || string.IsNullOrWhiteSpace(request.RedeemSecret))
             {
-                return TypedResults.BadRequest(CreateValidationProblem("tokenId and actorId are required."));
+                return TypedResults.BadRequest(CreateValidationProblem("tokenId, actorId, peerId, and redeemSecret are required."));
             }
 
             var token = await service.RedeemAsync(tokenId, request, cancellationToken);
