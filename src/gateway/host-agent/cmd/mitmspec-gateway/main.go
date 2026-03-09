@@ -1,29 +1,41 @@
 package main
 
 import (
+	"context"
 	"log"
-	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/selfmade/mitmspec/gateway/internal/config"
+	"github.com/selfmade/mitmspec/gateway/internal/controlplane"
+	"github.com/selfmade/mitmspec/gateway/internal/runtime"
 )
 
 func main() {
-	cfg := config.LoadFromEnv()
+	logger := log.New(log.Writer(), "mitmspec-gateway: ", log.LstdFlags|log.Lmsgprefix)
 
-	log.Printf(
-		"mitmspec gateway bootstrap: node=%s platform=%s wireguard=%s",
+	cfg, err := config.LoadFromEnv()
+	if err != nil {
+		logger.Fatalf("configuration error: %v", err)
+	}
+
+	logger.Printf(
+		"gateway bootstrap: node=%s platform=%s interface=%s control-plane=%s poll=%s",
 		cfg.NodeID,
 		cfg.Platform,
 		cfg.WireGuardInterface,
+		cfg.ControlPlaneBaseURL,
+		cfg.PollInterval,
 	)
 
-	if cfg.NodeID == "" {
-		log.Println("warning: gateway node id is empty; runtime validation is not implemented yet")
-	}
+	client := controlplane.NewClient(cfg.ControlPlaneBaseURL, cfg.RequestTimeout)
+	store := &runtime.Store{}
+	poller := runtime.NewPoller(cfg, client, store, logger)
 
-	if os.Getenv("MITMSPEC_GATEWAY_EXIT_AFTER_BOOT") == "1" {
-		return
-	}
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
 
-	select {}
+	if err := poller.Run(ctx); err != nil {
+		logger.Fatalf("gateway runtime failed: %v", err)
+	}
 }
