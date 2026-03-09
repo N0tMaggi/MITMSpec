@@ -1,10 +1,12 @@
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using MITMSpec.App.Api;
 using MITMSpec.App.Components;
 using MITMSpec.Application;
 using MITMSpec.Application.Configuration;
 using MITMSpec.Infrastructure;
+using MITMSpec.Infrastructure.Persistence;
 
 namespace MITMSpec.App;
 
@@ -16,7 +18,7 @@ public class Program
 
         builder.Services.Configure<PlatformMetadataOptions>(builder.Configuration.GetSection(PlatformMetadataOptions.SectionName));
         builder.Services.AddApplication();
-        builder.Services.AddInfrastructure();
+        builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
         builder.Services.AddRazorComponents()
             .AddInteractiveServerComponents();
         builder.Services.AddProblemDetails();
@@ -35,6 +37,14 @@ public class Program
         });
 
         var app = builder.Build();
+
+        if (!app.Environment.IsEnvironment("Testing"))
+        {
+            using var scope = app.Services.CreateScope();
+            var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<MITMSpecDbContext>>();
+            using var dbContext = dbContextFactory.CreateDbContext();
+            dbContext.Database.Migrate();
+        }
 
         if (!app.Environment.IsDevelopment())
         {

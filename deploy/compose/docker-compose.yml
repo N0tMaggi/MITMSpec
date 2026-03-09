@@ -6,6 +6,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__PostgreSql: Host=postgres;Port=5432;Database=mitmspec;Username=mitmspec;Password=mitmspec
     ports:
       - "8080:8080"
     depends_on:
@@ -18,6 +19,7 @@ services:
       dockerfile: src/server/MITMSpec.Worker/Dockerfile
     environment:
       DOTNET_ENVIRONMENT: Development
+      ConnectionStrings__PostgreSql: Host=postgres;Port=5432;Database=mitmspec;Username=mitmspec;Password=mitmspec
     depends_on:
       postgres:
         condition: service_healthy

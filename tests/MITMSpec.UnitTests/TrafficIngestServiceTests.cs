@@ -8,7 +8,7 @@ namespace MITMSpec.UnitTests;
 public class TrafficIngestServiceTests
 {
     [Fact]
-    public async Task IngestAsync_QuarantinesEnvelope_WhenUserCannotBeResolved()
+    public async Task IngestAsyncQuarantinesEnvelopeWhenUserCannotBeResolved()
     {
         var service = new TrafficIngestService(new FakeTrafficEventStore());
         var envelope = CreateEnvelope() with { UserId = null };
@@ -19,7 +19,7 @@ public class TrafficIngestServiceTests
     }
 
     [Fact]
-    public async Task IngestAsync_AcceptsEnvelope_WhenEnvelopeIsValid()
+    public async Task IngestAsyncAcceptsEnvelopeWhenEnvelopeIsValid()
     {
         var service = new TrafficIngestService(new FakeTrafficEventStore());
 

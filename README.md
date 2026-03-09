@@ -209,7 +209,6 @@ The platform is intended to fail closed where attribution, routing, or trust sta
 
 ## Contribution And Quality Expectations
 
-- Follow the engineering contract in `.private/AGENTS.md`
 - Prefer framework conventions and production-grade defaults
 - Add tests for success and failure paths
 - Do not introduce silent failure handling or cross-user data shortcuts
