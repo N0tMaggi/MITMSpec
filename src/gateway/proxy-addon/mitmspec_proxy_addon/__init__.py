@@ -1,0 +1,1 @@
+"""MITMSpec proxy addon package."""

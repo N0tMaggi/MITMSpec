@@ -1,0 +1,98 @@
+html, body {
+    font-family: "Segoe UI Variable Text", "Segoe UI", sans-serif;
+}
+
+body {
+    margin: 0;
+    color: #13232f;
+}
+
+a, .btn-link {
+    color: #006bb7;
+}
+
+h1:focus {
+    outline: none;
+}
+
+code {
+    font-family: "Cascadia Code", Consolas, monospace;
+}
+
+.page-card {
+    padding: 1.4rem;
+    border-radius: 1.25rem;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(19, 35, 47, 0.08);
+    box-shadow: 0 18px 60px rgba(27, 54, 71, 0.08);
+}
+
+.hero-card {
+    margin-bottom: 1.5rem;
+}
+
+.hero-card h2,
+.page-card h2,
+.page-card h3 {
+    margin-top: 0;
+}
+
+.dashboard-grid,
+.architecture-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.section-label {
+    margin: 0 0 0.4rem;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-size: 0.75rem;
+    color: #5a7689;
+}
+
+.section-head {
+    margin-bottom: 1rem;
+}
+
+.stat-card p:last-child {
+    margin-bottom: 0;
+}
+
+.roadmap-list {
+    margin: 0;
+    padding-left: 1.25rem;
+    display: grid;
+    gap: 0.75rem;
+}
+
+.table-shell {
+    overflow-x: auto;
+}
+
+.traffic-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.traffic-table th,
+.traffic-table td {
+    padding: 0.85rem 0.7rem;
+    text-align: left;
+    border-bottom: 1px solid rgba(19, 35, 47, 0.1);
+    vertical-align: top;
+}
+
+.traffic-table th {
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #5a7689;
+}
+
+.path-cell {
+    max-width: 22rem;
+    word-break: break-word;
+}

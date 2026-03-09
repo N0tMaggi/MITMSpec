@@ -1,0 +1,30 @@
+@page "/architecture"
+
+<PageTitle>Architecture</PageTitle>
+
+<section class="page-card">
+    <p class="section-label">Chosen direction</p>
+    <h2>Implementation split</h2>
+
+    <div class="architecture-grid">
+        <article>
+            <h3>Control plane</h3>
+            <p>ASP.NET Core 10 modular monolith with Blazor UI, Minimal APIs, and worker-hosted background processing.</p>
+        </article>
+
+        <article>
+            <h3>Gateway agent</h3>
+            <p>Go service responsible for WireGuard, routing, firewall coordination, proxy supervision, and host health.</p>
+        </article>
+
+        <article>
+            <h3>MITM integration</h3>
+            <p>Python addon running inside <code>mitmproxy</code> that emits versioned traffic envelopes.</p>
+        </article>
+
+        <article>
+            <h3>Packaging path</h3>
+            <p>Linux-first host deployment now, Windows MSI and EXE packaging later through WiX v4.</p>
+        </article>
+    </div>
+</section>

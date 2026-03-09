@@ -1,0 +1,37 @@
+/.private/
+/.vs/
+/.idea/
+/.vscode/
+/.DS_Store
+Thumbs.db
+*.user
+*.suo
+*.pdb
+*.cache
+*.log
+
+# Build output
+**/bin/
+**/obj/
+**/TestResults/
+artifacts/
+coverage/
+*.nupkg
+
+# Python
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+*.pyc
+*.pyo
+*.pyd
+
+# Go
+/src/gateway/host-agent/bin/
+/src/gateway/host-agent/dist/
+
+# Docker
+.docker/

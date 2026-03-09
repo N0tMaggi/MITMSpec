@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/server/">
+    <Project Path="src/server/MITMSpec.App/MITMSpec.App.csproj" />
+    <Project Path="src/server/MITMSpec.Application/MITMSpec.Application.csproj" />
+    <Project Path="src/server/MITMSpec.Contracts/MITMSpec.Contracts.csproj" />
+    <Project Path="src/server/MITMSpec.Domain/MITMSpec.Domain.csproj" />
+    <Project Path="src/server/MITMSpec.Infrastructure/MITMSpec.Infrastructure.csproj" />
+    <Project Path="src/server/MITMSpec.Worker/MITMSpec.Worker.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MITMSpec.IntegrationTests/MITMSpec.IntegrationTests.csproj" />
+    <Project Path="tests/MITMSpec.UnitTests/MITMSpec.UnitTests.csproj" />
+  </Folder>
+</Solution>

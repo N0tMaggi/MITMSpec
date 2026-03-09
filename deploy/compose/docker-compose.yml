@@ -1,0 +1,51 @@
+services:
+  mitmspec-app:
+    build:
+      context: ../..
+      dockerfile: src/server/MITMSpec.App/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  mitmspec-worker:
+    build:
+      context: ../..
+      dockerfile: src/server/MITMSpec.Worker/Dockerfile
+    environment:
+      DOTNET_ENVIRONMENT: Development
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: mitmspec
+      POSTGRES_PASSWORD: mitmspec
+      POSTGRES_DB: mitmspec
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mitmspec -d mitmspec"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  mitmproxy:
+    image: mitmproxy/mitmproxy:10.3.0
+    command: mitmdump -s /addons/mitmspec_proxy_addon/addon.py
+    volumes:
+      - ../../src/gateway/proxy-addon:/addons
+    ports:
+      - "8081:8080"
+      - "8082:8081"
+
+volumes:
+  pgdata:

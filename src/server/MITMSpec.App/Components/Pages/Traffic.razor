@@ -1,0 +1,55 @@
+@page "/traffic"
+
+@inject ITrafficQueryService TrafficQueryService
+
+<PageTitle>Traffic</PageTitle>
+
+@code {
+    private IReadOnlyList<TrafficEventSummaryDto> _events = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _events = await TrafficQueryService.GetRecentAsync(20);
+    }
+}
+
+<section class="page-card">
+    <div class="section-head">
+        <div>
+            <p class="section-label">Recent traffic</p>
+            <h2>Latest normalized events</h2>
+        </div>
+    </div>
+
+    <div class="table-shell">
+        <table class="traffic-table">
+            <thead>
+                <tr>
+                    <th>Observed</th>
+                    <th>User</th>
+                    <th>Gateway</th>
+                    <th>Method</th>
+                    <th>Host</th>
+                    <th>Path</th>
+                    <th>Status</th>
+                    <th>MITM</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in _events)
+                {
+                    <tr>
+                        <td>@item.ObservedAtUtc.ToString("u")</td>
+                        <td>@item.UserId</td>
+                        <td>@item.GatewayId</td>
+                        <td>@item.Method</td>
+                        <td>@item.Host</td>
+                        <td class="path-cell">@item.Path</td>
+                        <td>@(item.StatusCode?.ToString() ?? "-")</td>
+                        <td>@item.MitmDisposition</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>

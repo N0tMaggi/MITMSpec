@@ -1,0 +1,65 @@
+@page "/"
+
+@inject ISystemOverviewService SystemOverviewService
+
+<PageTitle>Overview</PageTitle>
+
+@code {
+    private SystemOverviewDto? _overview;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _overview = await SystemOverviewService.GetOverviewAsync();
+    }
+}
+
+<section class="page-card hero-card">
+    <div>
+        <p class="section-label">Current implementation baseline</p>
+        <h2>Linux-first traffic inspection platform with a modular control plane.</h2>
+        <p>
+            The repository now contains the agreed architecture baseline: ASP.NET Core 10 for the control plane,
+            Go for the privileged gateway path, Python for the <code>mitmproxy</code> integration, and a phased path
+            toward Windows MSI and EXE packaging.
+        </p>
+    </div>
+</section>
+
+@if (_overview is not null)
+{
+    <section class="dashboard-grid">
+        <article class="page-card stat-card">
+            <p class="section-label">Stack</p>
+            <h3>@_overview.ControlPlane</h3>
+            <p>@_overview.ProxyIntegration</p>
+        </article>
+
+        <article class="page-card stat-card">
+            <p class="section-label">Gateway</p>
+            <h3>@_overview.GatewayAgent</h3>
+            <p>@_overview.WindowsPackaging</p>
+        </article>
+
+        <article class="page-card stat-card">
+            <p class="section-label">Traffic Baseline</p>
+            <h3>@_overview.TotalEvents events</h3>
+            <p>Last update: @_overview.LastUpdatedUtc.ToString("u")</p>
+        </article>
+    </section>
+
+    <section class="page-card">
+        <div class="section-head">
+            <div>
+                <p class="section-label">Near-term roadmap</p>
+                <h2>Implementation priorities</h2>
+            </div>
+        </div>
+
+        <ol class="roadmap-list">
+            @foreach (var item in _overview.TopPriorities)
+            {
+                <li>@item</li>
+            }
+        </ol>
+    </section>
+}
