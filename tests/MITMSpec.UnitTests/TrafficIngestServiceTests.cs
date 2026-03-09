@@ -81,6 +81,9 @@ public class TrafficIngestServiceTests
         public Task<PeerDto?> GetByIdAsync(string peerId, CancellationToken cancellationToken = default)
             => Task.FromResult(peer?.PeerId == peerId ? peer : null);
 
+        public Task<IReadOnlyList<PeerDto>> GetRecentAsync(int take, CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<PeerDto>>(peer is null ? [] : [peer]);
+
         public Task<PeerDto> UpsertAsync(PeerDto model, CancellationToken cancellationToken = default)
             => Task.FromResult(model);
     }

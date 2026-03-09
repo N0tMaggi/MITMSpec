@@ -15,6 +15,18 @@ public sealed class UserStore(IDbContextFactory<MITMSpecDbContext> dbContextFact
         return entity is null ? null : Map(entity);
     }
 
+    public async Task<IReadOnlyList<UserDto>> GetRecentAsync(int take, CancellationToken cancellationToken = default)
+    {
+        await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var items = await dbContext.Users
+            .AsNoTracking()
+            .OrderByDescending(item => item.CreatedAtUtc)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+        return items.Select(Map).ToArray();
+    }
+
     public async Task<UserDto> UpsertAsync(UserDto user, CancellationToken cancellationToken = default)
     {
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);

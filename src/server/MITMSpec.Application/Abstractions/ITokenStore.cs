@@ -10,5 +10,7 @@ public interface ITokenStore
 
     Task<TokenDto?> GetByIdAsync(string tokenId, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<TokenDto>> GetRecentAsync(int take, CancellationToken cancellationToken = default);
+
     Task<string?> GetSecretHashAsync(string tokenId, CancellationToken cancellationToken = default);
 }

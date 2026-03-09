@@ -15,6 +15,18 @@ public sealed class TokenStore(IDbContextFactory<MITMSpecDbContext> dbContextFac
         return entity is null ? null : Map(entity);
     }
 
+    public async Task<IReadOnlyList<TokenDto>> GetRecentAsync(int take, CancellationToken cancellationToken = default)
+    {
+        await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var items = await dbContext.Tokens
+            .AsNoTracking()
+            .OrderByDescending(item => item.CreatedAtUtc)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+        return items.Select(Map).ToArray();
+    }
+
     public async Task<string?> GetSecretHashAsync(string tokenId, CancellationToken cancellationToken = default)
     {
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);

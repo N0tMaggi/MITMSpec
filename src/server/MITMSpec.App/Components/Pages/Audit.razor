@@ -1,0 +1,65 @@
+@page "/audit"
+@rendermode InteractiveServer
+
+@inject IAuditService AuditService
+
+<PageTitle>Audit</PageTitle>
+
+@code {
+    private IReadOnlyList<AuditEntryDto> _entries = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        _entries = await AuditService.GetRecentAsync(100);
+    }
+}
+
+<section class="page-card hero-card">
+    <div class="section-head">
+        <div>
+            <p class="section-label">Security-sensitive actions</p>
+            <h2>Audit trail for operator and provisioning events</h2>
+        </div>
+        <button class="action-button" @onclick="ReloadAsync">Refresh</button>
+    </div>
+
+    <p>
+        Request-level traffic is intentionally not mirrored into the application logs. This audit view is reserved for
+        login outcomes, token lifecycle events, user changes, and peer binding changes.
+    </p>
+</section>
+
+<section class="page-card">
+    <div class="table-shell">
+        <table class="traffic-table">
+            <thead>
+                <tr>
+                    <th>Occurred</th>
+                    <th>Action</th>
+                    <th>Actor</th>
+                    <th>Subject</th>
+                    <th>Result</th>
+                    <th>Detail</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var entry in _entries)
+                {
+                    <tr>
+                        <td>@entry.OccurredAtUtc.ToString("u")</td>
+                        <td>@entry.ActionType</td>
+                        <td>@entry.ActorId</td>
+                        <td>@entry.SubjectType:@entry.SubjectId</td>
+                        <td><span class="status-pill">@entry.Result</span></td>
+                        <td class="path-cell">@entry.Detail</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>

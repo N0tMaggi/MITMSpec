@@ -68,6 +68,113 @@ code {
     gap: 0.75rem;
 }
 
+.provisioning-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(22rem, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.operator-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    gap: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.operator-form-grid label {
+    display: grid;
+    gap: 0.45rem;
+    font-size: 0.9rem;
+    color: #365062;
+}
+
+.operator-form-grid input {
+    border: 1px solid rgba(19, 35, 47, 0.14);
+    border-radius: 0.9rem;
+    padding: 0.75rem 0.85rem;
+    font: inherit;
+    background: #f8fbfd;
+    color: #13232f;
+}
+
+.action-button,
+.action-link {
+    font: inherit;
+    cursor: pointer;
+}
+
+.action-button {
+    border: none;
+    border-radius: 999px;
+    background: #12344a;
+    color: #f5fbff;
+    padding: 0.7rem 1rem;
+}
+
+.action-button:hover {
+    background: #0e2939;
+}
+
+.action-link {
+    border: none;
+    background: transparent;
+    color: #006bb7;
+    padding: 0;
+}
+
+.action-link:hover {
+    color: #004f86;
+}
+
+.status-banner {
+    margin-bottom: 1.5rem;
+    padding: 0.95rem 1.1rem;
+    border-radius: 1rem;
+    font-weight: 600;
+}
+
+.status-success {
+    background: rgba(30, 124, 87, 0.12);
+    color: #165640;
+    border: 1px solid rgba(30, 124, 87, 0.18);
+}
+
+.status-error {
+    background: rgba(170, 58, 43, 0.12);
+    color: #8a2c20;
+    border: 1px solid rgba(170, 58, 43, 0.18);
+}
+
+.secret-panel {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 1rem;
+    background: rgba(18, 52, 74, 0.05);
+}
+
+.secret-panel p {
+    margin: 0;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.22rem 0.65rem;
+    border-radius: 999px;
+    background: rgba(18, 52, 74, 0.08);
+    color: #12344a;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.table-subtle {
+    color: #5a7689;
+    font-size: 0.9rem;
+}
+
 .table-shell {
     overflow-x: auto;
 }

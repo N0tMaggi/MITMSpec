@@ -62,6 +62,11 @@ public static class ApiEndpoints
         .WithSummary("Records a successful or failed login attempt in the audit log.");
 
         var users = endpoints.MapGroup("/api/users").RequireRateLimiting("api").WithTags("Users");
+        users.MapGet("/", async ([FromServices] IUserQueryService service, int? take, CancellationToken cancellationToken) =>
+            TypedResults.Ok(await service.GetRecentAsync(take ?? 50, cancellationToken)))
+        .WithName("GetRecentUsers")
+        .WithSummary("Gets recent users for operator workflows.");
+
         users.MapPost("/", async Task<IResult> (CreateUserRequestDto request, [FromServices] IUserLifecycleService service, CancellationToken cancellationToken) =>
         {
             if (string.IsNullOrWhiteSpace(request.ActorId) || string.IsNullOrWhiteSpace(request.UserId) || string.IsNullOrWhiteSpace(request.DisplayName))
@@ -89,6 +94,11 @@ public static class ApiEndpoints
         .WithSummary("Deactivates a user and records the action in the audit log.");
 
         var tokens = endpoints.MapGroup("/api/tokens").RequireRateLimiting("api").WithTags("Tokens");
+        tokens.MapGet("/", async ([FromServices] ITokenQueryService service, int? take, CancellationToken cancellationToken) =>
+            TypedResults.Ok(await service.GetRecentAsync(take ?? 50, cancellationToken)))
+        .WithName("GetRecentTokens")
+        .WithSummary("Gets recent provisioning tokens for operator workflows.");
+
         tokens.MapPost("/", async Task<IResult> (CreateTokenRequestDto request, [FromServices] ITokenLifecycleService service, CancellationToken cancellationToken) =>
         {
             if (string.IsNullOrWhiteSpace(request.ActorId) || string.IsNullOrWhiteSpace(request.UserId) || string.IsNullOrWhiteSpace(request.Description))
@@ -129,6 +139,11 @@ public static class ApiEndpoints
         .WithSummary("Revokes a provisioning token and records the action in the audit log.");
 
         var peers = endpoints.MapGroup("/api/peers").RequireRateLimiting("api").WithTags("Peers");
+        peers.MapGet("/", async ([FromServices] IPeerQueryService service, int? take, CancellationToken cancellationToken) =>
+            TypedResults.Ok(await service.GetRecentAsync(take ?? 50, cancellationToken)))
+        .WithName("GetRecentPeers")
+        .WithSummary("Gets recent peer bindings for operator workflows.");
+
         peers.MapPost("/", async Task<IResult> (BindPeerRequestDto request, [FromServices] IPeerLifecycleService service, CancellationToken cancellationToken) =>
         {
             if (string.IsNullOrWhiteSpace(request.ActorId) || string.IsNullOrWhiteSpace(request.PeerId) || string.IsNullOrWhiteSpace(request.UserId))

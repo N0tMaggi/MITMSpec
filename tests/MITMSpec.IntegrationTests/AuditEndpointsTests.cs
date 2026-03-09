@@ -63,6 +63,12 @@ public class AuditEndpointsTests : IClassFixture<TestWebApplicationFactory>
             $"/api/peers/{peerId}/remove",
             new RemovePeerRequestDto("admin-001", "peer rotated"));
 
+        var usersResponse = await client.GetAsync("/api/users?take=10");
+        var users = await usersResponse.Content.ReadFromJsonAsync<List<UserDto>>();
+        var tokensResponse = await client.GetAsync("/api/tokens?take=10");
+        var tokens = await tokensResponse.Content.ReadFromJsonAsync<List<TokenDto>>();
+        var peersResponse = await client.GetAsync("/api/peers?take=10");
+        var peers = await peersResponse.Content.ReadFromJsonAsync<List<PeerDto>>();
         var auditResponse = await client.GetAsync("/api/audit/entries?take=20");
         var auditEntries = await auditResponse.Content.ReadFromJsonAsync<List<AuditEntryDto>>();
 
@@ -77,9 +83,18 @@ public class AuditEndpointsTests : IClassFixture<TestWebApplicationFactory>
         Assert.NotNull(revokeToken);
         Assert.Equal(HttpStatusCode.OK, revokeTokenResponse.StatusCode);
         Assert.Equal(HttpStatusCode.OK, removePeerResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, usersResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, tokensResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, peersResponse.StatusCode);
         Assert.Equal(HttpStatusCode.OK, auditResponse.StatusCode);
 
+        Assert.NotNull(users);
+        Assert.NotNull(tokens);
+        Assert.NotNull(peers);
         Assert.NotNull(auditEntries);
+        Assert.Contains(users, entry => entry.UserId == userId);
+        Assert.Contains(tokens, entry => entry.TokenId == redeemToken.Token.TokenId);
+        Assert.Contains(peers, entry => entry.PeerId == peerId);
         Assert.Contains(auditEntries, entry => entry.ActionType == "login.succeeded");
         Assert.Contains(auditEntries, entry => entry.ActionType == "login.failed");
         Assert.Contains(auditEntries, entry => entry.ActionType == "user.created");

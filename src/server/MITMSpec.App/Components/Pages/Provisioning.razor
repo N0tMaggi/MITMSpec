@@ -1,0 +1,433 @@
+@page "/provisioning"
+@rendermode InteractiveServer
+
+@inject IUserQueryService UserQueryService
+@inject IUserLifecycleService UserLifecycleService
+@inject ITokenQueryService TokenQueryService
+@inject ITokenLifecycleService TokenLifecycleService
+@inject IPeerQueryService PeerQueryService
+@inject IPeerLifecycleService PeerLifecycleService
+
+<PageTitle>Provisioning</PageTitle>
+
+@code {
+    private const string OperatorActorId = "operator-ui";
+
+    private IReadOnlyList<UserDto> _users = [];
+    private IReadOnlyList<TokenDto> _tokens = [];
+    private IReadOnlyList<PeerDto> _peers = [];
+    private string? _statusMessage;
+    private bool _statusIsError;
+    private IssuedTokenDto? _issuedToken;
+
+    private readonly CreateUserFormModel _createUser = new();
+    private readonly CreateTokenFormModel _createToken = new();
+    private readonly BindPeerFormModel _bindPeer = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _users = await UserQueryService.GetRecentAsync(25);
+        _tokens = await TokenQueryService.GetRecentAsync(25);
+        _peers = await PeerQueryService.GetRecentAsync(25);
+    }
+
+    private async Task CreateUserAsync()
+    {
+        try
+        {
+            await UserLifecycleService.CreateAsync(
+                new CreateUserRequestDto(OperatorActorId, _createUser.UserId.Trim(), _createUser.DisplayName.Trim()));
+
+            _createUser.Reset();
+            _statusIsError = false;
+            _statusMessage = "User created.";
+            await LoadAsync();
+        }
+        catch (Exception exception)
+        {
+            SetError($"User creation failed: {exception.Message}");
+        }
+    }
+
+    private async Task DeactivateUserAsync(string userId)
+    {
+        try
+        {
+            var result = await UserLifecycleService.DeactivateAsync(
+                userId,
+                new DeactivateUserRequestDto(OperatorActorId, "Deactivated from operator console."));
+
+            if (result is null)
+            {
+                SetError("User could not be found.");
+                return;
+            }
+
+            _statusIsError = false;
+            _statusMessage = $"User '{userId}' deactivated.";
+            await LoadAsync();
+        }
+        catch (Exception exception)
+        {
+            SetError($"User deactivation failed: {exception.Message}");
+        }
+    }
+
+    private async Task CreateTokenAsync()
+    {
+        try
+        {
+            _issuedToken = await TokenLifecycleService.CreateAsync(
+                new CreateTokenRequestDto(OperatorActorId, _createToken.UserId.Trim(), _createToken.Description.Trim(), _createToken.LifetimeHours));
+
+            _createToken.Reset();
+            _statusIsError = false;
+            _statusMessage = $"Token '{_issuedToken.Token.TokenId}' issued. Store the redeem secret now.";
+            await LoadAsync();
+        }
+        catch (Exception exception)
+        {
+            SetError($"Token creation failed: {exception.Message}");
+        }
+    }
+
+    private async Task RevokeTokenAsync(string tokenId)
+    {
+        try
+        {
+            var result = await TokenLifecycleService.RevokeAsync(
+                tokenId,
+                new TokenActionRequestDto(OperatorActorId, "Revoked from operator console."));
+
+            if (result is null)
+            {
+                SetError("Token could not be found.");
+                return;
+            }
+
+            _statusIsError = false;
+            _statusMessage = $"Token '{tokenId}' revoked.";
+            await LoadAsync();
+        }
+        catch (Exception exception)
+        {
+            SetError($"Token revocation failed: {exception.Message}");
+        }
+    }
+
+    private async Task BindPeerAsync()
+    {
+        try
+        {
+            await PeerLifecycleService.BindPeerAsync(
+                new BindPeerRequestDto(OperatorActorId, _bindPeer.PeerId.Trim(), _bindPeer.UserId.Trim()));
+
+            _bindPeer.Reset();
+            _statusIsError = false;
+            _statusMessage = "Peer binding created.";
+            await LoadAsync();
+        }
+        catch (Exception exception)
+        {
+            SetError($"Peer bind failed: {exception.Message}");
+        }
+    }
+
+    private async Task RemovePeerAsync(string peerId)
+    {
+        try
+        {
+            var result = await PeerLifecycleService.RemovePeerAsync(
+                peerId,
+                new RemovePeerRequestDto(OperatorActorId, "Removed from operator console."));
+
+            if (result is null)
+            {
+                SetError("Peer could not be found.");
+                return;
+            }
+
+            _statusIsError = false;
+            _statusMessage = $"Peer '{peerId}' removed.";
+            await LoadAsync();
+        }
+        catch (Exception exception)
+        {
+            SetError($"Peer removal failed: {exception.Message}");
+        }
+    }
+
+    private void SetError(string message)
+    {
+        _statusIsError = true;
+        _statusMessage = message;
+    }
+
+    private sealed class CreateUserFormModel
+    {
+        [Required, StringLength(128, MinimumLength = 3)]
+        public string UserId { get; set; } = string.Empty;
+
+        [Required, StringLength(128, MinimumLength = 3)]
+        public string DisplayName { get; set; } = string.Empty;
+
+        public void Reset()
+        {
+            UserId = string.Empty;
+            DisplayName = string.Empty;
+        }
+    }
+
+    private sealed class CreateTokenFormModel
+    {
+        [Required, StringLength(128, MinimumLength = 3)]
+        public string UserId { get; set; } = string.Empty;
+
+        [Required, StringLength(256, MinimumLength = 3)]
+        public string Description { get; set; } = string.Empty;
+
+        [Range(1, 168)]
+        public int LifetimeHours { get; set; } = 24;
+
+        public void Reset()
+        {
+            UserId = string.Empty;
+            Description = string.Empty;
+            LifetimeHours = 24;
+        }
+    }
+
+    private sealed class BindPeerFormModel
+    {
+        [Required, StringLength(128, MinimumLength = 3)]
+        public string PeerId { get; set; } = string.Empty;
+
+        [Required, StringLength(128, MinimumLength = 3)]
+        public string UserId { get; set; } = string.Empty;
+
+        public void Reset()
+        {
+            PeerId = string.Empty;
+            UserId = string.Empty;
+        }
+    }
+}
+
+<section class="page-card hero-card">
+    <div>
+        <p class="section-label">Operator workflow</p>
+        <h2>Provision users, issue enrollment tokens, and control peer bindings.</h2>
+        <p>
+            This is the first operator-facing provisioning surface. It is intentionally narrow: user creation,
+            token issuance, manual lab peer binding, and safe revocation/deactivation paths.
+        </p>
+    </div>
+</section>
+
+@if (!string.IsNullOrWhiteSpace(_statusMessage))
+{
+    <section class="status-banner @(_statusIsError ? "status-error" : "status-success")">
+        @_statusMessage
+    </section>
+}
+
+@if (_issuedToken is not null)
+{
+    <section class="page-card">
+        <div class="section-head">
+            <div>
+                <p class="section-label">One-time secret</p>
+                <h2>Enrollment token issued</h2>
+            </div>
+        </div>
+
+        <div class="secret-panel">
+            <p><strong>Token ID</strong><br />@_issuedToken.Token.TokenId</p>
+            <p><strong>Redeem secret</strong><br /><code>@_issuedToken.RedeemSecret</code></p>
+            <p><strong>Expires</strong><br />@_issuedToken.Token.ExpiresAtUtc.ToString("u")</p>
+        </div>
+    </section>
+}
+
+<section class="provisioning-grid">
+    <article class="page-card">
+        <div class="section-head">
+            <div>
+                <p class="section-label">Users</p>
+                <h2>Create and deactivate users</h2>
+            </div>
+        </div>
+
+        <EditForm Model="_createUser" OnValidSubmit="CreateUserAsync" FormName="create-user">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <div class="operator-form-grid">
+                <label>
+                    <span>User ID</span>
+                    <InputText @bind-Value="_createUser.UserId" />
+                </label>
+                <label>
+                    <span>Display name</span>
+                    <InputText @bind-Value="_createUser.DisplayName" />
+                </label>
+            </div>
+            <button class="action-button" type="submit">Create user</button>
+        </EditForm>
+
+        <div class="table-shell">
+            <table class="traffic-table">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in _users)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@user.DisplayName</strong><br />
+                                <span class="table-subtle">@user.UserId</span>
+                            </td>
+                            <td>@(user.IsActive ? "Active" : "Inactive")</td>
+                            <td>@user.CreatedAtUtc.ToString("u")</td>
+                            <td>
+                                @if (user.IsActive)
+                                {
+                                    <button class="action-link" @onclick="() => DeactivateUserAsync(user.UserId)">Deactivate</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </article>
+
+    <article class="page-card">
+        <div class="section-head">
+            <div>
+                <p class="section-label">Tokens</p>
+                <h2>Issue and revoke enrollment tokens</h2>
+            </div>
+        </div>
+
+        <EditForm Model="_createToken" OnValidSubmit="CreateTokenAsync" FormName="create-token">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <div class="operator-form-grid">
+                <label>
+                    <span>User ID</span>
+                    <InputText @bind-Value="_createToken.UserId" />
+                </label>
+                <label>
+                    <span>Description</span>
+                    <InputText @bind-Value="_createToken.Description" />
+                </label>
+                <label>
+                    <span>Lifetime (hours)</span>
+                    <InputNumber @bind-Value="_createToken.LifetimeHours" />
+                </label>
+            </div>
+            <button class="action-button" type="submit">Issue token</button>
+        </EditForm>
+
+        <div class="table-shell">
+            <table class="traffic-table">
+                <thead>
+                    <tr>
+                        <th>Token</th>
+                        <th>User</th>
+                        <th>Status</th>
+                        <th>Expires</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var token in _tokens)
+                    {
+                        <tr>
+                            <td>
+                                <strong>@token.TokenId</strong><br />
+                                <span class="table-subtle">@token.Description</span>
+                            </td>
+                            <td>@token.UserId</td>
+                            <td><span class="status-pill">@token.Status</span></td>
+                            <td>@token.ExpiresAtUtc.ToString("u")</td>
+                            <td>
+                                @if (token.Status == TokenStatus.Pending)
+                                {
+                                    <button class="action-link" @onclick="() => RevokeTokenAsync(token.TokenId)">Revoke</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </article>
+</section>
+
+<section class="page-card">
+    <div class="section-head">
+        <div>
+            <p class="section-label">Peers</p>
+            <h2>Manual peer binding for lab workflows</h2>
+        </div>
+    </div>
+
+    <EditForm Model="_bindPeer" OnValidSubmit="BindPeerAsync" FormName="bind-peer">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <div class="operator-form-grid">
+            <label>
+                <span>Peer ID</span>
+                <InputText @bind-Value="_bindPeer.PeerId" />
+            </label>
+            <label>
+                <span>User ID</span>
+                <InputText @bind-Value="_bindPeer.UserId" />
+            </label>
+        </div>
+        <button class="action-button" type="submit">Bind peer</button>
+    </EditForm>
+
+    <div class="table-shell">
+        <table class="traffic-table">
+            <thead>
+                <tr>
+                    <th>Peer</th>
+                    <th>User</th>
+                    <th>Origin</th>
+                    <th>Bound</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var peer in _peers)
+                {
+                    <tr>
+                        <td>@peer.PeerId</td>
+                        <td>@peer.UserId</td>
+                        <td>@(peer.EnrollmentTokenId is null ? "Manual" : $"Token {peer.EnrollmentTokenId}")</td>
+                        <td>@peer.BoundAtUtc.ToString("u")</td>
+                        <td>
+                            @if (peer.IsBound && peer.RemovedAtUtc is null)
+                            {
+                                <button class="action-link" @onclick="() => RemovePeerAsync(peer.PeerId)">Remove</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>

@@ -15,6 +15,18 @@ public sealed class PeerStore(IDbContextFactory<MITMSpecDbContext> dbContextFact
         return entity is null ? null : Map(entity);
     }
 
+    public async Task<IReadOnlyList<PeerDto>> GetRecentAsync(int take, CancellationToken cancellationToken = default)
+    {
+        await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var items = await dbContext.Peers
+            .AsNoTracking()
+            .OrderByDescending(item => item.BoundAtUtc)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+        return items.Select(Map).ToArray();
+    }
+
     public async Task<PeerDto> UpsertAsync(PeerDto peer, CancellationToken cancellationToken = default)
     {
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
