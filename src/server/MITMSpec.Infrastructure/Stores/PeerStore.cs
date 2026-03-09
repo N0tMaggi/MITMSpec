@@ -27,6 +27,18 @@ public sealed class PeerStore(IDbContextFactory<MITMSpecDbContext> dbContextFact
         return items.Select(Map).ToArray();
     }
 
+    public async Task<IReadOnlyList<PeerDto>> GetActiveBindingsAsync(CancellationToken cancellationToken = default)
+    {
+        await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var items = await dbContext.Peers
+            .AsNoTracking()
+            .Where(item => item.IsBound && item.RemovedAtUtc == null)
+            .OrderBy(item => item.PeerId)
+            .ToListAsync(cancellationToken);
+
+        return items.Select(Map).ToArray();
+    }
+
     public async Task<IReadOnlyList<string>> GetAllocatedTunnelAddressesAsync(CancellationToken cancellationToken = default)
     {
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);

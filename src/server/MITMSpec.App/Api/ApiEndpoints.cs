@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using MITMSpec.Contracts.Certificates;
 using MITMSpec.Contracts.Enrollment;
 using MITMSpec.Contracts.Auth;
+using MITMSpec.Contracts.Gateways;
 using MITMSpec.Contracts.Peers;
 using MITMSpec.Contracts.Tokens;
 using MITMSpec.Contracts.Traffic;
@@ -172,7 +173,17 @@ public static class ApiEndpoints
         .WithName("RemovePeer")
         .WithSummary("Removes a peer binding and records the action in the audit log.");
 
-        endpoints.MapPlaceholderGroup("/api/gateways", "Gateway management endpoints are planned for a later phase.");
+        var gateways = endpoints.MapGroup("/api/gateways").RequireRateLimiting("api").WithTags("Gateways");
+        gateways.MapGet("/peer-assignments", async ([FromServices] IGatewayConfigurationService service, CancellationToken cancellationToken) =>
+            TypedResults.Ok(await service.GetPeerAssignmentsAsync(cancellationToken)))
+            .WithName("GetGatewayPeerAssignments")
+            .WithSummary("Gets active peer assignments for the gateway host agent.");
+
+        gateways.MapGet("/configuration/current", async ([FromServices] IGatewayConfigurationService service, CancellationToken cancellationToken) =>
+            TypedResults.Ok(await service.GetCurrentSnapshotAsync(cancellationToken)))
+            .WithName("GetCurrentGatewayConfiguration")
+            .WithSummary("Gets the current gateway configuration snapshot for the host agent.");
+
         endpoints.MapPlaceholderGroup("/api/webhooks", "Webhook endpoints are planned for a later phase.");
 
         var certificateAuthorities = endpoints.MapGroup("/api/ca").RequireRateLimiting("api").WithTags("Certificates");

@@ -11,4 +11,6 @@ public interface IPeerStore
     Task<IReadOnlyList<PeerDto>> GetRecentAsync(int take, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<string>> GetAllocatedTunnelAddressesAsync(CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<PeerDto>> GetActiveBindingsAsync(CancellationToken cancellationToken = default);
 }

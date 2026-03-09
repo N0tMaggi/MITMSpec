@@ -12,6 +12,8 @@ public sealed class ProvisioningOptions
 
     public string GatewayTunnelNetworkCidr { get; set; } = "10.44.0.0/24";
 
+    public string GatewayWireGuardInterface { get; set; } = "wg-mitmspec";
+
     public string ClientDnsServer { get; set; } = "1.1.1.1";
 
     public string AllowedIps { get; set; } = "0.0.0.0/0, ::/0";

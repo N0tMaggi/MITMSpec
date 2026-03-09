@@ -11,6 +11,7 @@ public static class DependencyInjection
         services.AddScoped<IAuditService, AuditService>();
         services.AddScoped<ICertificateAuthorityService, CertificateAuthorityService>();
         services.AddScoped<IEnrollmentPackageService, EnrollmentPackageService>();
+        services.AddScoped<IGatewayConfigurationService, GatewayConfigurationService>();
         services.AddScoped<IPeerAddressAllocator, PeerAddressAllocator>();
         services.AddScoped<IUserQueryService, UserQueryService>();
         services.AddScoped<ITokenQueryService, TokenQueryService>();

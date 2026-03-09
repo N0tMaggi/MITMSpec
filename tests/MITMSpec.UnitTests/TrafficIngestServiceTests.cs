@@ -84,6 +84,9 @@ public class TrafficIngestServiceTests
         public Task<IReadOnlyList<string>> GetAllocatedTunnelAddressesAsync(CancellationToken cancellationToken = default)
             => Task.FromResult<IReadOnlyList<string>>(peer?.TunnelAddressCidr is null ? [] : [peer.TunnelAddressCidr]);
 
+        public Task<IReadOnlyList<PeerDto>> GetActiveBindingsAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<PeerDto>>(peer is null ? [] : [peer]);
+
         public Task<IReadOnlyList<PeerDto>> GetRecentAsync(int take, CancellationToken cancellationToken = default)
             => Task.FromResult<IReadOnlyList<PeerDto>>(peer is null ? [] : [peer]);
 
