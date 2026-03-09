@@ -72,6 +72,7 @@ public class EnrollmentPackageEndpointsTests : IClassFixture<TestWebApplicationF
         Assert.NotEmpty(package.IssuedToken.Token.TokenId);
         Assert.NotEmpty(package.IssuedToken.RedeemSecret);
         Assert.Contains("BEGIN CERTIFICATE", package.CertificateAuthority.CertificatePem);
+        Assert.Equal("10.44.0.0/24", package.GatewayTunnelNetworkCidr);
         Assert.Contains("[Interface]", package.WireGuardConfigTemplate);
         Assert.Contains(package.IssuedToken.Token.TokenId, package.RedeemEndpointPath);
         Assert.NotEmpty(package.Notes);

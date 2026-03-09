@@ -27,6 +27,18 @@ public sealed class PeerStore(IDbContextFactory<MITMSpecDbContext> dbContextFact
         return items.Select(Map).ToArray();
     }
 
+    public async Task<IReadOnlyList<string>> GetAllocatedTunnelAddressesAsync(CancellationToken cancellationToken = default)
+    {
+        await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var items = await dbContext.Peers
+            .AsNoTracking()
+            .Where(item => item.IsBound && item.RemovedAtUtc == null && item.TunnelAddressCidr != null)
+            .Select(item => item.TunnelAddressCidr!)
+            .ToListAsync(cancellationToken);
+
+        return items;
+    }
+
     public async Task<PeerDto> UpsertAsync(PeerDto peer, CancellationToken cancellationToken = default)
     {
         await using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -40,6 +52,8 @@ public sealed class PeerStore(IDbContextFactory<MITMSpecDbContext> dbContextFact
 
         entity.UserId = peer.UserId;
         entity.EnrollmentTokenId = peer.EnrollmentTokenId;
+        entity.TunnelAddressCidr = peer.TunnelAddressCidr;
+        entity.ClientPublicKey = peer.ClientPublicKey;
         entity.IsBound = peer.IsBound;
         entity.BoundAtUtc = peer.BoundAtUtc;
         entity.RemovedAtUtc = peer.RemovedAtUtc;
@@ -49,5 +63,5 @@ public sealed class PeerStore(IDbContextFactory<MITMSpecDbContext> dbContextFact
     }
 
     private static PeerDto Map(PeerEntity entity) =>
-        new(entity.PeerId, entity.UserId, entity.EnrollmentTokenId, entity.IsBound, entity.BoundAtUtc, entity.RemovedAtUtc);
+        new(entity.PeerId, entity.UserId, entity.EnrollmentTokenId, entity.TunnelAddressCidr, entity.ClientPublicKey, entity.IsBound, entity.BoundAtUtc, entity.RemovedAtUtc);
 }

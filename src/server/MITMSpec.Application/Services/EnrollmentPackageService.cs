@@ -29,11 +29,13 @@ public sealed class EnrollmentPackageService(
             authority,
             provisioningOptions.Value.ControlPlaneBaseUrl.TrimEnd('/'),
             $"/api/tokens/{issuedToken.Token.TokenId}/redeem",
+            provisioningOptions.Value.GatewayTunnelNetworkCidr,
             BuildWireGuardTemplate(),
             [
                 "Install the MITMSpec root CA certificate on the client before HTTPS inspection.",
                 "Treat the redeem secret as a one-time bootstrap secret and do not store it in plaintext after redemption.",
-                "Generate WireGuard client keys on the client device. The current template is a bootstrap template and not a fully assigned peer config."
+                "Generate WireGuard client keys on the client device. The final tunnel address is assigned on successful redemption.",
+                "Submit the client WireGuard public key during token redemption so the gateway can assign a stable peer record."
             ]);
     }
 

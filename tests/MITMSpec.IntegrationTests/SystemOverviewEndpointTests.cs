@@ -87,7 +87,8 @@ public class SystemOverviewEndpointTests : IClassFixture<TestWebApplicationFacto
 
         var redeemResponse = await client.PostAsJsonAsync(
             $"/api/tokens/{issuedToken.Token.TokenId}/redeem",
-            new RedeemTokenRequestDto("gateway-001", peerId, issuedToken.RedeemSecret));
+            new RedeemTokenRequestDto("gateway-001", peerId, issuedToken.RedeemSecret, "client-public-key-001"));
+        var redeemed = await redeemResponse.Content.ReadFromJsonAsync<TokenRedeemResultDto>();
 
         var envelope = new TrafficEnvelopeV1(
             $"evt-{suffix}",
@@ -113,6 +114,11 @@ public class SystemOverviewEndpointTests : IClassFixture<TestWebApplicationFacto
         var detail = await detailResponse.Content.ReadFromJsonAsync<TrafficEventDetailDto>();
 
         Assert.Equal(HttpStatusCode.OK, redeemResponse.StatusCode);
+        Assert.NotNull(redeemed);
+        Assert.Equal(peerId, redeemed.Peer.PeerId);
+        Assert.Equal("client-public-key-001", redeemed.Peer.ClientPublicKey);
+        Assert.StartsWith("10.44.0.", redeemed.Peer.TunnelAddressCidr);
+        Assert.Equal(redeemed.Peer.TunnelAddressCidr, redeemed.WireGuard.AssignedAddressCidr);
         Assert.Equal(HttpStatusCode.OK, ingestResponse.StatusCode);
         Assert.Equal(HttpStatusCode.OK, detailResponse.StatusCode);
         Assert.NotNull(detail);

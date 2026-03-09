@@ -1,7 +1,10 @@
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.Extensions.Options;
 using MITMSpec.Application.Abstractions;
+using MITMSpec.Application.Configuration;
 using MITMSpec.Contracts.Audit;
+using MITMSpec.Contracts.Enrollment;
 using MITMSpec.Contracts.Peers;
 using MITMSpec.Contracts.Tokens;
 
@@ -10,7 +13,9 @@ namespace MITMSpec.Application.Services;
 public sealed class TokenLifecycleService(
     ITokenStore tokenStore,
     IPeerStore peerStore,
-    IAuditEntryStore auditEntryStore) : ITokenLifecycleService
+    IPeerAddressAllocator peerAddressAllocator,
+    IAuditEntryStore auditEntryStore,
+    IOptions<ProvisioningOptions> provisioningOptions) : ITokenLifecycleService
 {
     public async Task<IssuedTokenDto> CreateAsync(CreateTokenRequestDto request, CancellationToken cancellationToken = default)
     {
@@ -69,6 +74,23 @@ public sealed class TokenLifecycleService(
             return null;
         }
 
+        if (string.IsNullOrWhiteSpace(request.ClientPublicKey))
+        {
+            await auditEntryStore.AddAsync(
+                new AuditEntryDto(
+                    Guid.NewGuid().ToString("n"),
+                    DateTimeOffset.UtcNow,
+                    "token.redeem_failed",
+                    "token",
+                    current.TokenId,
+                    request.ActorId,
+                    "failure",
+                    $"Token redemption failed for peer '{request.PeerId}' because no client public key was supplied."),
+                cancellationToken);
+
+            return null;
+        }
+
         var storedSecretHash = await tokenStore.GetSecretHashAsync(tokenId, cancellationToken);
         if (storedSecretHash is null || !CryptographicOperations.FixedTimeEquals(
                 Encoding.UTF8.GetBytes(storedSecretHash),
@@ -91,7 +113,25 @@ public sealed class TokenLifecycleService(
 
         var now = DateTimeOffset.UtcNow;
         var updated = await tokenStore.UpsertAsync(current with { Status = TokenStatus.Redeemed, RedeemedAtUtc = now }, cancellationToken);
-        var peer = await peerStore.UpsertAsync(new PeerDto(request.PeerId, updated.UserId, updated.TokenId, true, now, null), cancellationToken);
+        var tunnelAddress = await peerAddressAllocator.AllocateAsync(cancellationToken);
+        var peer = await peerStore.UpsertAsync(
+            new PeerDto(
+                request.PeerId,
+                updated.UserId,
+                updated.TokenId,
+                tunnelAddress,
+                request.ClientPublicKey,
+                true,
+                now,
+                null),
+            cancellationToken);
+        var wireGuard = new WireGuardPeerConfigurationDto(
+            tunnelAddress,
+            provisioningOptions.Value.ClientDnsServer,
+            provisioningOptions.Value.GatewayVpnEndpoint,
+            provisioningOptions.Value.GatewayVpnPublicKey,
+            provisioningOptions.Value.AllowedIps,
+            provisioningOptions.Value.PersistentKeepaliveSeconds);
 
         await auditEntryStore.AddAsync(
             new AuditEntryDto(
@@ -114,10 +154,10 @@ public sealed class TokenLifecycleService(
                 peer.PeerId,
                 request.ActorId,
                 "success",
-                $"Peer '{peer.PeerId}' was bound to user '{peer.UserId}' via token '{updated.TokenId}'."),
+                $"Peer '{peer.PeerId}' was bound to user '{peer.UserId}' via token '{updated.TokenId}' with tunnel address '{peer.TunnelAddressCidr}'."),
             cancellationToken);
 
-        return new TokenRedeemResultDto(updated, peer);
+        return new TokenRedeemResultDto(updated, peer, wireGuard);
     }
 
     public async Task<TokenDto?> RevokeAsync(string tokenId, TokenActionRequestDto request, CancellationToken cancellationToken = default)

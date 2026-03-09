@@ -560,6 +560,7 @@
                     <th>Peer</th>
                     <th>User</th>
                     <th>Origin</th>
+                    <th>Tunnel</th>
                     <th>Bound</th>
                     <th></th>
                 </tr>
@@ -571,6 +572,7 @@
                         <td>@peer.PeerId</td>
                         <td>@peer.UserId</td>
                         <td>@(peer.EnrollmentTokenId is null ? "Manual" : $"Token {peer.EnrollmentTokenId}")</td>
+                        <td>@(peer.TunnelAddressCidr ?? "-")</td>
                         <td>@peer.BoundAtUtc.ToString("u")</td>
                         <td>
                             @if (peer.IsBound && peer.RemovedAtUtc is null)

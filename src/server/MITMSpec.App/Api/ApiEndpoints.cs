@@ -116,9 +116,9 @@ public static class ApiEndpoints
 
         tokens.MapPost("/{tokenId}/redeem", async Task<IResult> (string tokenId, RedeemTokenRequestDto request, [FromServices] ITokenLifecycleService service, CancellationToken cancellationToken) =>
         {
-            if (string.IsNullOrWhiteSpace(tokenId) || string.IsNullOrWhiteSpace(request.ActorId) || string.IsNullOrWhiteSpace(request.PeerId) || string.IsNullOrWhiteSpace(request.RedeemSecret))
+            if (string.IsNullOrWhiteSpace(tokenId) || string.IsNullOrWhiteSpace(request.ActorId) || string.IsNullOrWhiteSpace(request.PeerId) || string.IsNullOrWhiteSpace(request.RedeemSecret) || string.IsNullOrWhiteSpace(request.ClientPublicKey))
             {
-                return TypedResults.BadRequest(CreateValidationProblem("tokenId, actorId, peerId, and redeemSecret are required."));
+                return TypedResults.BadRequest(CreateValidationProblem("tokenId, actorId, peerId, redeemSecret, and clientPublicKey are required."));
             }
 
             var token = await service.RedeemAsync(tokenId, request, cancellationToken);

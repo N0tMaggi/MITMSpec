@@ -22,7 +22,7 @@ public class TrafficIngestServiceTests
     [Fact]
     public async Task IngestAsyncAcceptsEnvelopeWhenEnvelopeMatchesBoundPeer()
     {
-        var peer = new PeerDto("peer-test", "user-test", "tok-test", true, DateTimeOffset.UtcNow, null);
+        var peer = new PeerDto("peer-test", "user-test", "tok-test", "10.44.0.10/24", "pubkey-test", true, DateTimeOffset.UtcNow, null);
         var service = new TrafficIngestService(new FakeTrafficEventStore(), new FakePeerStore(peer));
 
         var result = await service.IngestAsync(CreateEnvelope());
@@ -33,7 +33,7 @@ public class TrafficIngestServiceTests
     [Fact]
     public async Task IngestAsyncQuarantinesEnvelopeWhenEnvelopeUserDoesNotMatchBoundPeer()
     {
-        var peer = new PeerDto("peer-test", "user-other", "tok-test", true, DateTimeOffset.UtcNow, null);
+        var peer = new PeerDto("peer-test", "user-other", "tok-test", "10.44.0.11/24", "pubkey-other", true, DateTimeOffset.UtcNow, null);
         var service = new TrafficIngestService(new FakeTrafficEventStore(), new FakePeerStore(peer));
 
         var result = await service.IngestAsync(CreateEnvelope());
@@ -80,6 +80,9 @@ public class TrafficIngestServiceTests
     {
         public Task<PeerDto?> GetByIdAsync(string peerId, CancellationToken cancellationToken = default)
             => Task.FromResult(peer?.PeerId == peerId ? peer : null);
+
+        public Task<IReadOnlyList<string>> GetAllocatedTunnelAddressesAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult<IReadOnlyList<string>>(peer?.TunnelAddressCidr is null ? [] : [peer.TunnelAddressCidr]);
 
         public Task<IReadOnlyList<PeerDto>> GetRecentAsync(int take, CancellationToken cancellationToken = default)
             => Task.FromResult<IReadOnlyList<PeerDto>>(peer is null ? [] : [peer]);

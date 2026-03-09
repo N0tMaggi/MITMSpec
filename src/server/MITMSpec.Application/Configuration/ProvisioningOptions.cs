@@ -10,9 +10,13 @@ public sealed class ProvisioningOptions
 
     public string GatewayVpnPublicKey { get; set; } = "REPLACE_WITH_GATEWAY_PUBLIC_KEY";
 
+    public string GatewayTunnelNetworkCidr { get; set; } = "10.44.0.0/24";
+
     public string ClientDnsServer { get; set; } = "1.1.1.1";
 
     public string AllowedIps { get; set; } = "0.0.0.0/0, ::/0";
+
+    public int PersistentKeepaliveSeconds { get; set; } = 25;
 
     public string RootCaCommonName { get; set; } = "MITMSpec Root CA";
 }

@@ -10,5 +10,6 @@ public sealed record EnrollmentPackageDto(
     CertificateAuthorityDto CertificateAuthority,
     string ControlPlaneBaseUrl,
     string RedeemEndpointPath,
+    string GatewayTunnelNetworkCidr,
     string WireGuardConfigTemplate,
     string[] Notes);

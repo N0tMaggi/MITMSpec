@@ -48,7 +48,7 @@ public class AuditEndpointsTests : IClassFixture<TestWebApplicationFactory>
 
         var redeemTokenResponse = await client.PostAsJsonAsync(
             $"/api/tokens/{redeemToken!.Token.TokenId}/redeem",
-            new RedeemTokenRequestDto("gateway-001", peerId, redeemToken.RedeemSecret));
+            new RedeemTokenRequestDto("gateway-001", peerId, redeemToken.RedeemSecret, "client-public-key-audit"));
 
         var createRevokeTokenResponse = await client.PostAsJsonAsync(
             "/api/tokens",

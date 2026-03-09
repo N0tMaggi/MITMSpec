@@ -8,6 +8,10 @@ public sealed class PeerEntity
 
     public string? EnrollmentTokenId { get; set; }
 
+    public string? TunnelAddressCidr { get; set; }
+
+    public string? ClientPublicKey { get; set; }
+
     public bool IsBound { get; set; }
 
     public DateTimeOffset BoundAtUtc { get; set; }
