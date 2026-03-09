@@ -175,6 +175,38 @@ code {
     font-size: 0.9rem;
 }
 
+.package-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+    gap: 1rem;
+}
+
+.package-panel {
+    padding: 1rem;
+    border-radius: 1rem;
+    background: rgba(18, 52, 74, 0.04);
+    border: 1px solid rgba(19, 35, 47, 0.08);
+}
+
+.package-panel p {
+    margin-top: 0;
+}
+
+.code-block {
+    margin: 0;
+    padding: 0.85rem;
+    border-radius: 0.9rem;
+    background: #0d1d28;
+    color: #e6f4ff;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.notes-list {
+    margin-bottom: 0;
+}
+
 .table-shell {
     overflow-x: auto;
 }

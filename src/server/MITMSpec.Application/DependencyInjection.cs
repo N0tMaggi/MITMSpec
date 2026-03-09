@@ -9,6 +9,8 @@ public static class DependencyInjection
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
         services.AddScoped<IAuditService, AuditService>();
+        services.AddScoped<ICertificateAuthorityService, CertificateAuthorityService>();
+        services.AddScoped<IEnrollmentPackageService, EnrollmentPackageService>();
         services.AddScoped<IUserQueryService, UserQueryService>();
         services.AddScoped<ITokenQueryService, TokenQueryService>();
         services.AddScoped<IPeerQueryService, PeerQueryService>();

@@ -3,6 +3,8 @@
 
 @inject IUserQueryService UserQueryService
 @inject IUserLifecycleService UserLifecycleService
+@inject ICertificateAuthorityService CertificateAuthorityService
+@inject IEnrollmentPackageService EnrollmentPackageService
 @inject ITokenQueryService TokenQueryService
 @inject ITokenLifecycleService TokenLifecycleService
 @inject IPeerQueryService PeerQueryService
@@ -16,12 +18,15 @@
     private IReadOnlyList<UserDto> _users = [];
     private IReadOnlyList<TokenDto> _tokens = [];
     private IReadOnlyList<PeerDto> _peers = [];
+    private CertificateAuthorityDto? _activeCertificateAuthority;
     private string? _statusMessage;
     private bool _statusIsError;
     private IssuedTokenDto? _issuedToken;
+    private EnrollmentPackageDto? _enrollmentPackage;
 
     private readonly CreateUserFormModel _createUser = new();
     private readonly CreateTokenFormModel _createToken = new();
+    private readonly CreateEnrollmentPackageFormModel _createEnrollmentPackage = new();
     private readonly BindPeerFormModel _bindPeer = new();
 
     protected override async Task OnInitializedAsync()
@@ -34,6 +39,7 @@
         _users = await UserQueryService.GetRecentAsync(25);
         _tokens = await TokenQueryService.GetRecentAsync(25);
         _peers = await PeerQueryService.GetRecentAsync(25);
+        _activeCertificateAuthority = await CertificateAuthorityService.GetActiveAsync();
     }
 
     private async Task CreateUserAsync()
@@ -84,6 +90,7 @@
         {
             _issuedToken = await TokenLifecycleService.CreateAsync(
                 new CreateTokenRequestDto(OperatorActorId, _createToken.UserId.Trim(), _createToken.Description.Trim(), _createToken.LifetimeHours));
+            _enrollmentPackage = null;
 
             _createToken.Reset();
             _statusIsError = false;
@@ -93,6 +100,45 @@
         catch (Exception exception)
         {
             SetError($"Token creation failed: {exception.Message}");
+        }
+    }
+
+    private async Task CreateEnrollmentPackageAsync()
+    {
+        try
+        {
+            _enrollmentPackage = await EnrollmentPackageService.CreateAsync(
+                new CreateEnrollmentPackageRequestDto(
+                    OperatorActorId,
+                    _createEnrollmentPackage.UserId.Trim(),
+                    _createEnrollmentPackage.Description.Trim(),
+                    _createEnrollmentPackage.LifetimeHours));
+            _issuedToken = _enrollmentPackage.IssuedToken;
+            _createEnrollmentPackage.Reset();
+            _statusIsError = false;
+            _statusMessage = $"Enrollment package '{_enrollmentPackage.PackageId}' created.";
+            await LoadAsync();
+        }
+        catch (Exception exception)
+        {
+            SetError($"Enrollment package creation failed: {exception.Message}");
+        }
+    }
+
+    private async Task RotateCertificateAuthorityAsync()
+    {
+        try
+        {
+            _activeCertificateAuthority = await CertificateAuthorityService.RotateAsync(
+                new RotateCertificateAuthorityRequestDto(OperatorActorId, "Rotated from operator console."));
+
+            _statusIsError = false;
+            _statusMessage = $"Certificate authority rotated to '{_activeCertificateAuthority.CertificateAuthorityId}'.";
+            await LoadAsync();
+        }
+        catch (Exception exception)
+        {
+            SetError($"Certificate authority rotation failed: {exception.Message}");
         }
     }
 
@@ -216,6 +262,25 @@
             UserId = string.Empty;
         }
     }
+
+    private sealed class CreateEnrollmentPackageFormModel
+    {
+        [Required, StringLength(128, MinimumLength = 3)]
+        public string UserId { get; set; } = string.Empty;
+
+        [Required, StringLength(256, MinimumLength = 3)]
+        public string Description { get; set; } = string.Empty;
+
+        [Range(1, 168)]
+        public int LifetimeHours { get; set; } = 24;
+
+        public void Reset()
+        {
+            UserId = string.Empty;
+            Description = string.Empty;
+            LifetimeHours = 24;
+        }
+    }
 }
 
 <section class="page-card hero-card">
@@ -251,6 +316,61 @@
             <p><strong>Redeem secret</strong><br /><code>@_issuedToken.RedeemSecret</code></p>
             <p><strong>Expires</strong><br />@_issuedToken.Token.ExpiresAtUtc.ToString("u")</p>
         </div>
+    </section>
+}
+
+@if (_activeCertificateAuthority is not null)
+{
+    <section class="page-card">
+        <div class="section-head">
+            <div>
+                <p class="section-label">Root certificate authority</p>
+                <h2>Current active MITMSpec trust anchor</h2>
+            </div>
+            <button class="action-button" @onclick="RotateCertificateAuthorityAsync">Rotate CA</button>
+        </div>
+
+        <div class="secret-panel">
+            <p><strong>CA ID</strong><br />@_activeCertificateAuthority.CertificateAuthorityId</p>
+            <p><strong>Common name</strong><br />@_activeCertificateAuthority.CommonName</p>
+            <p><strong>Thumbprint</strong><br /><code>@_activeCertificateAuthority.Thumbprint</code></p>
+            <p><strong>Activated</strong><br />@_activeCertificateAuthority.ActivatedAtUtc.ToString("u")</p>
+        </div>
+    </section>
+}
+
+@if (_enrollmentPackage is not null)
+{
+    <section class="page-card">
+        <div class="section-head">
+            <div>
+                <p class="section-label">Enrollment package</p>
+                <h2>Bootstrap bundle generated</h2>
+            </div>
+        </div>
+
+        <div class="package-grid">
+            <div class="package-panel">
+                <p><strong>Package ID</strong><br />@_enrollmentPackage.PackageId</p>
+                <p><strong>Redeem endpoint</strong><br /><code>@_enrollmentPackage.ControlPlaneBaseUrl@_enrollmentPackage.RedeemEndpointPath</code></p>
+                <p><strong>CA thumbprint</strong><br /><code>@_enrollmentPackage.CertificateAuthority.Thumbprint</code></p>
+            </div>
+            <div class="package-panel">
+                <p><strong>Root CA PEM</strong></p>
+                <pre class="code-block">@_enrollmentPackage.CertificateAuthority.CertificatePem</pre>
+            </div>
+            <div class="package-panel">
+                <p><strong>WireGuard bootstrap template</strong></p>
+                <pre class="code-block">@_enrollmentPackage.WireGuardConfigTemplate</pre>
+            </div>
+        </div>
+
+        <ul class="notes-list">
+            @foreach (var note in _enrollmentPackage.Notes)
+            {
+                <li>@note</li>
+            }
+        </ul>
     </section>
 }
 
@@ -373,6 +493,39 @@
                 </tbody>
             </table>
         </div>
+    </article>
+
+    <article class="page-card">
+        <div class="section-head">
+            <div>
+                <p class="section-label">Packages</p>
+                <h2>Create enrollment bundles</h2>
+            </div>
+        </div>
+
+        <EditForm Model="_createEnrollmentPackage" OnValidSubmit="CreateEnrollmentPackageAsync" FormName="create-enrollment-package">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <div class="operator-form-grid">
+                <label>
+                    <span>User ID</span>
+                    <InputText @bind-Value="_createEnrollmentPackage.UserId" />
+                </label>
+                <label>
+                    <span>Description</span>
+                    <InputText @bind-Value="_createEnrollmentPackage.Description" />
+                </label>
+                <label>
+                    <span>Lifetime (hours)</span>
+                    <InputNumber @bind-Value="_createEnrollmentPackage.LifetimeHours" />
+                </label>
+            </div>
+            <button class="action-button" type="submit">Create package</button>
+        </EditForm>
+
+        <p class="table-subtle">
+            The package includes a one-time token, the active MITMSpec root CA, and a bootstrap WireGuard template.
+        </p>
     </article>
 </section>
 

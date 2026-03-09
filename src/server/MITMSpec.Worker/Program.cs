@@ -10,6 +10,8 @@ public class Program
     {
         var builder = Host.CreateApplicationBuilder(args);
         builder.Services.Configure<PlatformMetadataOptions>(builder.Configuration.GetSection(PlatformMetadataOptions.SectionName));
+        builder.Services.Configure<ProvisioningOptions>(builder.Configuration.GetSection(ProvisioningOptions.SectionName));
+        builder.Services.AddDataProtection();
         builder.Services.AddApplication();
         builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
         builder.Services.AddHostedService<Worker>();

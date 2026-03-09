@@ -1,5 +1,7 @@
 using MITMSpec.Application.Abstractions;
 using Microsoft.AspNetCore.Mvc;
+using MITMSpec.Contracts.Certificates;
+using MITMSpec.Contracts.Enrollment;
 using MITMSpec.Contracts.Auth;
 using MITMSpec.Contracts.Peers;
 using MITMSpec.Contracts.Tokens;
@@ -172,6 +174,39 @@ public static class ApiEndpoints
 
         endpoints.MapPlaceholderGroup("/api/gateways", "Gateway management endpoints are planned for a later phase.");
         endpoints.MapPlaceholderGroup("/api/webhooks", "Webhook endpoints are planned for a later phase.");
+
+        var certificateAuthorities = endpoints.MapGroup("/api/ca").RequireRateLimiting("api").WithTags("Certificates");
+        certificateAuthorities.MapGet("/active", async ([FromServices] ICertificateAuthorityService service, CancellationToken cancellationToken) =>
+            TypedResults.Ok(await service.GetActiveAsync(cancellationToken)))
+            .WithName("GetActiveCertificateAuthority")
+            .WithSummary("Gets the active MITMSpec root certificate authority.");
+
+        certificateAuthorities.MapPost("/rotate", async Task<IResult> (RotateCertificateAuthorityRequestDto request, [FromServices] ICertificateAuthorityService service, CancellationToken cancellationToken) =>
+        {
+            if (string.IsNullOrWhiteSpace(request.ActorId) || string.IsNullOrWhiteSpace(request.Reason))
+            {
+                return TypedResults.BadRequest(CreateValidationProblem("actorId and reason are required."));
+            }
+
+            var authority = await service.RotateAsync(request, cancellationToken);
+            return TypedResults.Ok(authority);
+        })
+        .WithName("RotateCertificateAuthority")
+        .WithSummary("Rotates the active MITMSpec root certificate authority.");
+
+        var enrollment = endpoints.MapGroup("/api/enrollment").RequireRateLimiting("api").WithTags("Enrollment");
+        enrollment.MapPost("/packages", async Task<IResult> (CreateEnrollmentPackageRequestDto request, [FromServices] IEnrollmentPackageService service, CancellationToken cancellationToken) =>
+        {
+            if (string.IsNullOrWhiteSpace(request.ActorId) || string.IsNullOrWhiteSpace(request.UserId) || string.IsNullOrWhiteSpace(request.Description))
+            {
+                return TypedResults.BadRequest(CreateValidationProblem("actorId, userId, and description are required."));
+            }
+
+            var package = await service.CreateAsync(request, cancellationToken);
+            return TypedResults.Created($"/api/enrollment/packages/{package.PackageId}", package);
+        })
+        .WithName("CreateEnrollmentPackage")
+        .WithSummary("Creates an enrollment package with a one-time token and the active root CA.");
 
         var audit = endpoints.MapGroup("/api/audit").RequireRateLimiting("api").WithTags("Audit");
         audit.MapGet("/entries", async ([FromServices] IAuditService service, int? take, CancellationToken cancellationToken) =>

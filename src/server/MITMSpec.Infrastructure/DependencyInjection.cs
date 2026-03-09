@@ -57,6 +57,7 @@ public static class DependencyInjection
 
         services.AddScoped<ITrafficEventStore, TrafficEventStore>();
         services.AddScoped<IAuditEntryStore, AuditEntryStore>();
+        services.AddScoped<ICertificateAuthorityStore, CertificateAuthorityStore>();
         services.AddScoped<IUserStore, UserStore>();
         services.AddScoped<ITokenStore, TokenStore>();
         services.AddScoped<IPeerStore, PeerStore>();
